@@ -15,8 +15,8 @@ HTML_SITE_CONFIG = {
 
     },
     "showstudio.com": {
-        "item_selector": "a.block",
-        "title_selector": "h3.break-word",
+        "item_selector": "a.block",           # ??????
+        "title_selector": "h3",
         "link_attr": "href",
         "base_url": "https://www.showstudio.com",
 
@@ -30,22 +30,23 @@ HTML_SITE_CONFIG = {
 
     },
     "system-magazine.com": {
-        "item_selector": "div#latest-articles .article",
-        "title_selector": "h3",
-        "link_selector": "a",
+        "item_selector": "div.articles-item.text-center.has-image",   # ???????
+        "title_selector": "div.articles-item__title",
+        "link_selector": "a.block--link",
         "link_attr": "href",
-        "base_url": "https://system-magazine.com"
+        "base_url": "https://system-magazine.com",
+
     },
     "buro247.ru": {
-        "item_selector": "div.flex.flex-column.main-content",
-        "title_selector": "h2",
-        "link_selector": "a[href^='/']",
+        "item_selector": "article.mb-60.regular, div.top-five__item.slick-slide",
+        "title_selector": "h4.link-text, h2",
+        "link_selector": "a.no-underline, a[href^='/']",
         "link_attr": "href",
         "base_url": "https://www.buro247.ru"
 
     },
     "style.rbc.ru": {
-        "item_selector": "div[itemtype='https://schema.org/NewsArticle']",
+        "item_selector": "div[itemtype='https://schema.org/NewsArticle']",       # ??????
         "title_selector": "span[itemprop='headline']",
         "link_selector": "a[itemprop='url']",
         "link_attr": "href",
@@ -74,7 +75,6 @@ def parse_with_bs4(url, config):
                 continue
             title = title_el.get_text(strip=True)
 
-            # Если link_selector не задан — берём ссылку из самого item (например, если item — это <a>)
             if config.get("link_selector"):
                 link_el = item.select_one(config["link_selector"])
             else:
@@ -86,7 +86,7 @@ def parse_with_bs4(url, config):
             link = link_el.get(config["link_attr"])
             if not link:
                 continue
-            if link.startswith("/"):
+            if link and link.startswith("/"):
                 link = config["base_url"] + link
 
             results.append({"title": title, "link": link})
@@ -109,10 +109,13 @@ async def parse_with_playwright(url, config):
         results = []
         for item in items:
             try:
-                title_el = item.locator(config["title_selector"])
-                title = await title_el.text_content()
+                if config.get("title_selector"):
+                    title_el = item.locator(config["title_selector"])
+                    title = await title_el.text_content()
+                else:
+                    title = await item.inner_text()
 
-                link_el = item.locator(config.get("link_selector", config["title_selector"]))
+                link_el = item.locator(config.get("link_selector", config["title_selector"])) if config.get("link_selector") else item
                 link = await link_el.get_attribute(config["link_attr"])
 
                 if title and link:

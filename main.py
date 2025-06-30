@@ -18,14 +18,14 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup():
-    print("Парсим RSS источники:")
-    for url in rss_urls:
-        print(f"\n--- {url} ---")
-        try:
-            for item in parse_rss(url):
-                print(f"{item['title']} → {item['link']}")
-        except Exception as e:
-            print(f"Ошибка при парсинге RSS {url}: {e}")
+    # print("Парсим RSS источники:")
+    # for url in rss_urls:
+    #     print(f"\n--- {url} ---")
+    #     try:
+    #         for item in parse_rss(url):
+    #             print(f"{item['title']} → {item['link']}")
+    #     except Exception as e:
+    #         print(f"Ошибка при парсинге RSS {url}: {e}")
 
     for url in html_urls:
         try:
