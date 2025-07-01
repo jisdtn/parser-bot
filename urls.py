@@ -25,9 +25,9 @@ rss_urls = [
 
 html_urls = [
     'https://www.instyle.com',
-    'https://www.showstudio.com',
+    'https://www.showstudio.com/news',
     'https://theimpression.com',
-    'https://www.system-magazine.com',
+    'https://www.system-magazine.com/issues',
     'https://www.buro247.ru',
     'https://style.rbc.ru',
 
