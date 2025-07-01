@@ -31,8 +31,8 @@ HTML_SITE_CONFIG = {
     },
     "system-magazine.com": {
         "item_selector": "div.articles-item.text-center.has-image",   # ???????
-        "title_selector": "div.articles-item__title",
-        "link_selector": "a.block--link",
+        "title_selector": "h3",
+        "link_selector": "a",
         "link_attr": "href",
         "base_url": "https://system-magazine.com",
 
@@ -45,17 +45,39 @@ HTML_SITE_CONFIG = {
         "base_url": "https://www.buro247.ru"
 
     },
-    "style.rbc.ru": {
-        "item_selector": "div[itemtype='https://schema.org/NewsArticle']",       # ??????
-        "title_selector": "span[itemprop='headline']",
-        "link_selector": "a[itemprop='url']",
+    "style.rbc.ru": [
+    {
+        "item_selector": ".itbg_medium",
+        "title_selector": ".itbg_medium__text-block__center",
+        "link_selector": ".itbg_medium__link",
+        "link_attr": "href",
+        "base_url": "https://style.rbc.ru"
+    },
+    {
+        "item_selector": ".itlg_main",
+        "title_selector": ".itlg_main__title",
+        "link_selector": ".itlg_main__link",
+        "link_attr": "href",
+        "base_url": "https://style.rbc.ru"
+    },
+    {
+        "item_selector": ".itmd_main",
+        "title_selector": ".itmd_main__title",
+        "link_selector": ".itmd_main__link",
         "link_attr": "href",
         "base_url": "https://style.rbc.ru"
     }
+]
 
 }
 
-BS_ONLY_SITES = {"instyle.com"}
+BS_ONLY_SITES = {
+    "instyle.com",
+    "showstudio.com",
+    "theimpression.com",
+    "buro247.ru",
+    "style.rbc.ru",
+    }
 
 
 def get_domain(url):
@@ -99,34 +121,60 @@ def parse_with_bs4(url, config):
 
 
 async def parse_with_playwright(url, config):
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page()
-        await page.goto(url, timeout=30000)
-        await page.wait_for_load_state("networkidle")
+    results = []
+    browser = None
 
-        items = await page.locator(config["item_selector"]).all()
-        results = []
-        for item in items:
-            try:
-                if config.get("title_selector"):
-                    title_el = item.locator(config["title_selector"])
-                    title = await title_el.text_content()
-                else:
-                    title = await item.inner_text()
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page()
+            await page.goto(url, timeout=30000)
+            await page.wait_for_load_state("networkidle")
 
-                link_el = item.locator(config.get("link_selector", config["title_selector"])) if config.get("link_selector") else item
-                link = await link_el.get_attribute(config["link_attr"])
+            if config.get("item_selector"):
+                try:
+                    await page.wait_for_selector(config["item_selector"], timeout=10000)
+                except:
+                    print(f"Элементы по селектору {config['item_selector']} не найдены")
+                    return []
 
-                if title and link:
+            items = await page.locator(config["item_selector"]).all()
+            for item in items:
+                try:
+                    if config.get("title_selector"):
+                        title_el = item.locator(config["title_selector"])
+                        title = await title_el.text_content()
+                    else:
+                        title = await item.inner_text()
+                    if not title:
+                        continue
+
+                    link_el = item.locator(
+                        config.get("link_selector", config.get("title_selector"))
+                    ) if config.get("link_selector") or config.get("title_selector") else item
+                    link_attr = config.get("link_attr", "href")
+                    link = await link_el.get_attribute(link_attr)
+                    if not link:
+                        continue
+
                     if link.startswith("/"):
-                        link = config["base_url"] + link
-                    results.append({"title": title.strip(), "link": link.strip()})
-            except Exception as e:
-                print(f"Ошибка в элементе: {e}")
-                continue
-        await browser.close()
-        return results
+                        link = config["base_url"].rstrip("/") + link
+                    results.append({
+                        "title": title.strip(),
+                        "link": link.strip()
+                    })
+                except Exception as e:
+                    print(f"Ошибка в элементе: {e}")
+                    continue
+
+    except Exception as e:
+        print(f"Ошибка в Playwright: {e}")
+
+    finally:
+        if browser:
+            await browser.close()
+
+    return results
 
 
 
@@ -135,12 +183,24 @@ async def try_bs_then_playwright(url):
     config = HTML_SITE_CONFIG.get(domain)
     if not config:
         raise ValueError(f"Нет настроек для домена: {domain}")
+    
+    config_set = config if isinstance(config, list) else [config]
 
     print(f"Пробуем BS4 для {url}")
-    results = parse_with_bs4(url, config)
-    if results or domain in BS_ONLY_SITES:
-        return results
+    all_results = []
+    for config in config_set:
+        results = parse_with_bs4(url, config)
+        all_results.extend(results)
+    if all_results:
+        return all_results
+
+    if domain in BS_ONLY_SITES:
+        return []
 
     print(f"Переключаемся на Playwright для {url}")
-    return await parse_with_playwright(url, config)
+    for config in config_set:
+        results = await parse_with_playwright(url, config)
+        all_results.extend(results)
+    return all_results
+
 
