@@ -91,32 +91,43 @@ def parse_with_bs4(url, config):
         results = []
 
         for item in items:
-            title_el = item.select_one(config["title_selector"])
-            if not title_el:
+            try:
+                title_selector = config.get("title_selector")
+                if title_selector:
+                    title_el = item.select_one(title_selector)
+                    if not title_el:
+                        continue
+                    title = title_el.get_text(strip=True)
+                else:
+                    title = item.get_text(strip=True)
+
+                if not title:
+                    continue
+
+                if config.get("link_selector"):
+                    link_el = item.select_one(config["link_selector"])
+                else:
+                    link_el = item
+
+                if not link_el:
+                    continue
+
+                link = link_el.get(config["link_attr"])
+                if not link or not isinstance(link, str):
+                    print(f"⚠️ Некорректный link: {link}")
+                    continue
+                if link.startswith("/"):
+                    link = config["base_url"].rstrip("/") + link
+                    
+                results.append({"title": title, "link": link})
+
+            except Exception as e:
+                print(f"Ошибка в элементе: {e}")
                 continue
-            title = title_el.get_text(strip=True)
-
-            if config.get("link_selector"):
-                link_el = item.select_one(config["link_selector"])
-            else:
-                link_el = item
-
-            if not link_el:
-                continue
-
-            link = link_el.get(config["link_attr"])
-            if not link:
-                continue
-            if link and link.startswith("/"):
-                link = config["base_url"] + link
-
-            results.append({"title": title, "link": link})
-
         return results
     except Exception as e:
         print(f"BS4 парсинг не удался: {e}")
         return []
-
 
 
 async def parse_with_playwright(url, config):
@@ -144,7 +155,6 @@ async def parse_with_playwright(url, config):
             items = await page.locator(item_selector).all()
             for index, item in enumerate(items):
                 try:
-                    # Заголовок
                     if title_selector:
                         title_el = item.locator(title_selector)
                         if await title_el.count() == 0:
@@ -159,7 +169,6 @@ async def parse_with_playwright(url, config):
                         print(f"[{index}] Пустой заголовок, пропускаем")
                         continue
 
-                    # Ссылка
                     link_selector = config.get("link_selector") or title_selector
                     link_el = item.locator(link_selector) if link_selector else item
                     if await link_el.count() == 0:
