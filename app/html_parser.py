@@ -1,10 +1,10 @@
+# нужно логгирование 
+
 from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
-import asyncio
 from playwright.async_api import async_playwright
-
 
 HTML_SITE_CONFIG = {
     "instyle.com": {
@@ -30,11 +30,11 @@ HTML_SITE_CONFIG = {
 
     },
     "system-magazine.com": {
-        "item_selector": "div.articles-item",   # ???????
-        "title_selector": "a",
+        "item_selector": "div.articles-item",
+        "title_selector": "a > h2.articles-item__title",
         "link_selector": "a",
         "link_attr": "href",
-        "base_url": "https://system-magazine.com/issues",
+        "base_url": "https://system-magazine.com",
 
     },
     "buro247.ru": {
@@ -114,7 +114,7 @@ def parse_with_bs4(url, config):
 
                 link = link_el.get(config["link_attr"])
                 if not link or not isinstance(link, str):
-                    print(f"⚠️ Некорректный link: {link}")
+                    (f"⚠️ Некорректный link: {link}")
                     continue
                 if link.startswith("/"):
                     link = config["base_url"].rstrip("/") + link
@@ -140,7 +140,15 @@ async def parse_with_playwright(url, config):
             page = await browser.new_page()
             await page.goto(url, timeout=30000)
             await page.wait_for_load_state("networkidle")
-            await page.wait_for_timeout(2000)  # дать JS дорендериться
+            await page.wait_for_timeout(5000)
+            # scroll to force lazy load
+            await page.evaluate("""() => {
+                window.scrollBy(0, document.body.scrollHeight);
+            }""")
+            await page.wait_for_timeout(3000)
+            html = await page.content()
+            with open("system_debug.html", "w", encoding="utf-8") as f:
+                f.write(html)
 
             item_selector = config.get("item_selector")
             title_selector = config.get("title_selector")
@@ -148,6 +156,7 @@ async def parse_with_playwright(url, config):
 
             try:
                 await page.wait_for_selector(full_wait_selector, timeout=10000)
+                await page.wait_for_timeout(7000)
             except Exception:
                 print(f"Элементы по селектору {full_wait_selector} не найдены")
                 return []
@@ -229,5 +238,6 @@ async def try_bs_then_playwright(url):
         playwright_results.extend(results)
     
     return playwright_results
+
 
 

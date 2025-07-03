@@ -1,0 +1,35 @@
+version: '3.8'
+
+volumes:
+  pg_data:
+
+services:
+  db:
+    image: postgres:13.10
+    env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: always
+    ports:
+      - 5432:5432
+
+  backend:
+    build: ./app
+    env_file: .env
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    depends_on:
+      - db
+    ports:
+      - 8000:8000
+    restart: on-failure
+
+
+  bot:
+    build: ./bot
+    depends_on: 
+        - backend
+    env_file: .env
+    ports:
+        - 8080:8080
+    restart: on-failure

@@ -1,5 +1,8 @@
+# нужно логгирование 
+
 import feedparser
 import requests
+
 # from playwright.sync_api import sync_playwright
 
 def parse_rss(url: str) -> list[dict]:
