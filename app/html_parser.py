@@ -1,10 +1,9 @@
-# нужно логгирование 
-
 from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
+import logging
 
 HTML_SITE_CONFIG = {
     "instyle.com": {
@@ -114,7 +113,7 @@ def parse_with_bs4(url, config):
 
                 link = link_el.get(config["link_attr"])
                 if not link or not isinstance(link, str):
-                    (f"⚠️ Некорректный link: {link}")
+                    logging.error(f" Некорректный link: {link}")
                     continue
                 if link.startswith("/"):
                     link = config["base_url"].rstrip("/") + link
@@ -122,11 +121,11 @@ def parse_with_bs4(url, config):
                 results.append({"title": title, "link": link})
 
             except Exception as e:
-                print(f"Ошибка в элементе: {e}")
+                logging.error(f"Ошибка в элементе: {e}")
                 continue
         return results
     except Exception as e:
-        print(f"BS4 парсинг не удался: {e}")
+        logging.error(f"BS4 парсинг не удался: {e}")
         return []
 
 
@@ -141,7 +140,7 @@ async def parse_with_playwright(url, config):
             await page.goto(url, timeout=30000)
             await page.wait_for_load_state("networkidle")
             await page.wait_for_timeout(5000)
-            # scroll to force lazy load
+
             await page.evaluate("""() => {
                 window.scrollBy(0, document.body.scrollHeight);
             }""")
@@ -158,7 +157,7 @@ async def parse_with_playwright(url, config):
                 await page.wait_for_selector(full_wait_selector, timeout=10000)
                 await page.wait_for_timeout(7000)
             except Exception:
-                print(f"Элементы по селектору {full_wait_selector} не найдены")
+                logging.error(f"Элементы по селектору {full_wait_selector} не найдены")
                 return []
 
             items = await page.locator(item_selector).all()
@@ -168,27 +167,27 @@ async def parse_with_playwright(url, config):
                         title_el = item.locator(title_selector)
                         if await title_el.count() == 0:
                             html = await item.inner_html()
-                            print(f"[{index}] {title_selector} не найден, HTML:\n{html}")
+                            logging.error(f"[{index}] {title_selector} не найден, HTML:\n{html}")
                             continue
                         title = await title_el.first.text_content()
                     else:
                         title = await item.inner_text(timeout=2000)
 
                     if not title or not title.strip():
-                        print(f"[{index}] Пустой заголовок, пропускаем")
+                        logging.info(f"[{index}] Пустой заголовок, пропускаем")
                         continue
 
                     link_selector = config.get("link_selector") or title_selector
                     link_el = item.locator(link_selector) if link_selector else item
                     if await link_el.count() == 0:
-                        print(f"[{index}] Не найден элемент ссылки по селектору {link_selector}")
+                        logging.error(f"[{index}] Не найден элемент ссылки по селектору {link_selector}")
                         continue
 
                     link_attr = config.get("link_attr", "href")
                     link = await link_el.first.get_attribute(link_attr)
 
                     if not link:
-                        print(f"[{index}] Пустая ссылка, пропускаем")
+                        logging.info(f"[{index}] Пустая ссылка, пропускаем")
                         continue
 
                     if link.startswith("/"):
@@ -200,11 +199,11 @@ async def parse_with_playwright(url, config):
                     })
 
                 except Exception as e:
-                    print(f"[{index}] Ошибка в элементе: {e}")
+                    logging.error(f"[{index}] Ошибка в элементе: {e}")
                     continue
 
     except Exception as e:
-        print(f"Ошибка в Playwright: {e}")
+        logging.error(f"Ошибка в Playwright: {e}")
 
     finally:
         if browser:
@@ -221,7 +220,7 @@ async def try_bs_then_playwright(url):
     
     config_set = config if isinstance(config, list) else [config]
 
-    print(f"Пробуем BS4 для {url}")
+    logging.info(f"Пробуем BS4 для {url}")
     bs4_results = []
     for config in config_set:
         results = parse_with_bs4(url, config)
@@ -240,4 +239,8 @@ async def try_bs_then_playwright(url):
     return playwright_results
 
 
-
+logging.basicConfig(
+    filename="app.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)

@@ -1,5 +1,4 @@
-# нужно логгирование 
-
+import logging
 import feedparser
 import requests
 
@@ -21,7 +20,7 @@ def parse_rss(url: str) -> list[dict]:
         feed = feedparser.parse(response.content)
         return [{"title": entry.title, "link": entry.link} for entry in feed.entries]
     except Exception as e:
-        print(f" Ошибка при запросе RSS {url}: {e}")
+        logging.error(f" Ошибка при запросе RSS {url}: {e}")
         return []
 
 
@@ -37,3 +36,9 @@ def parse_rss(url: str) -> list[dict]:
 # feed = fetch_rss_with_browser("https://www.businessoffashion.com/arc/outboundfeeds/rss/?outputType=xml")
 # for item in feed.entries:
 #     print(item.title, "→", item.link)
+
+logging.basicConfig(
+    filename="app.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)

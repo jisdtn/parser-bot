@@ -12,7 +12,6 @@ import logging
 load_dotenv()
 
 
-
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 dp = Dispatcher()
 router = Router()
