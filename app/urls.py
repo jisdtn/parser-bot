@@ -14,7 +14,7 @@ rss_urls = [
     'https://luxe.digital/feed',
     'https://vestoj.com/feed',
     'https://the-talks.com/feed',
-    'https://www.businessoffashion.com/arc/outboundfeeds/rss/?outputType=xml',
+    # 'https://www.businessoffashion.com/arc/outboundfeeds/rss/?outputType=xml',
     'https://ww.fashionnetwork.com/rss/feed/ww,1.xml',
     'https://fashionunited.com/rss-news',
     'https://www.glossy.co/feed/',
@@ -27,7 +27,7 @@ html_urls = [
     'https://www.instyle.com',
     'https://www.showstudio.com/news',
     'https://theimpression.com',
-    'https://www.system-magazine.com/issues',
+    # 'https://www.system-magazine.com/issues',
     'https://www.buro247.ru',
     'https://style.rbc.ru',
 

@@ -60,8 +60,11 @@ async def parse_sources():
 async def main():
     global pool
     pool = await get_pool()
-    await parse_sources()
 
+    try:
+        await parse_sources()
+    finally:
+        await bot.session.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -70,4 +73,3 @@ if __name__ == "__main__":
 # business of fashion и system_magazine - нужно разобраться и поключить их тоже
 
 # везде добавить дату парсинга статей (главный метод, рсс и хтмл)
-# разобраться, почему крон не работает 
