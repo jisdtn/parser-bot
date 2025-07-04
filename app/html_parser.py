@@ -2,8 +2,10 @@ from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
-import logging
+from playwright.sync_api import sync_playwright
+from logger_config import get_logger
+
+logger = get_logger("perser_html")
 
 HTML_SITE_CONFIG = {
     "instyle.com": {
@@ -113,7 +115,7 @@ def parse_with_bs4(url, config):
 
                 link = link_el.get(config["link_attr"])
                 if not link or not isinstance(link, str):
-                    logging.error(f" Некорректный link: {link}")
+                    logger.error(f" Некорректный link: {link}")
                     continue
                 if link.startswith("/"):
                     link = config["base_url"].rstrip("/") + link
@@ -121,93 +123,95 @@ def parse_with_bs4(url, config):
                 results.append({"title": title, "link": link})
 
             except Exception as e:
-                logging.error(f"Ошибка в элементе: {e}")
+                logger.error(f"Ошибка в элементе: {e}")
                 continue
         return results
     except Exception as e:
-        logging.error(f"BS4 парсинг не удался: {e}")
+        logger.error(f"BS4 парсинг не удался: {e}")
         return []
 
 
-async def parse_with_playwright(url, config):
+def parse_with_playwright(url, config):
     results = []
-    browser = None
 
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch()
-            page = await browser.new_page()
-            await page.goto(url, timeout=30000)
-            await page.wait_for_load_state("networkidle")
-            await page.wait_for_timeout(5000)
-
-            await page.evaluate("""() => {
-                window.scrollBy(0, document.body.scrollHeight);
-            }""")
-            await page.wait_for_timeout(3000)
-            html = await page.content()
-            with open("system_debug.html", "w", encoding="utf-8") as f:
-                f.write(html)
-
-            item_selector = config.get("item_selector")
-            title_selector = config.get("title_selector")
-            full_wait_selector = f"{item_selector} {title_selector}" if title_selector else item_selector
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page()
 
             try:
-                await page.wait_for_selector(full_wait_selector, timeout=10000)
-                await page.wait_for_timeout(7000)
-            except Exception:
-                logging.error(f"Элементы по селектору {full_wait_selector} не найдены")
-                return []
+                page.goto(url, timeout=30000)
+                page.wait_for_load_state("networkidle")
+                page.wait_for_timeout(5000)
 
-            items = await page.locator(item_selector).all()
-            for index, item in enumerate(items):
+                page.evaluate("() => window.scrollBy(0, document.body.scrollHeight);")
+                page.wait_for_timeout(3000)
+
+                html = page.content()
+                with open("system_debug.html", "w", encoding="utf-8") as f:
+                    f.write(html)
+
+                item_selector = config.get("item_selector")
+                title_selector = config.get("title_selector")
+                full_wait_selector = f"{item_selector} {title_selector}" if title_selector else item_selector
+
                 try:
-                    if title_selector:
-                        title_el = item.locator(title_selector)
-                        if await title_el.count() == 0:
-                            html = await item.inner_html()
-                            logging.error(f"[{index}] {title_selector} не найден, HTML:\n{html}")
+                    page.wait_for_selector(full_wait_selector, timeout=10000)
+                    page.wait_for_timeout(7000)
+                except Exception:
+                    logger.error(f"Элементы по селектору {full_wait_selector} не найдены")
+                    return []
+
+                items = page.locator(item_selector).all()
+                for index, item in enumerate(items):
+                    try:
+                        if title_selector:
+                            title_el = item.locator(title_selector)
+                            if title_el.count() == 0:
+                                html = item.inner_html()
+                                logger.error(f"[{index}] {title_selector} не найден, HTML:\n{html}")
+                                continue
+                            title = title_el.first.text_content()
+                        else:
+                            title = item.inner_text(timeout=2000)
+
+                        if not title or not title.strip():
+                            logger.info(f"[{index}] Пустой заголовок, пропускаем")
                             continue
-                        title = await title_el.first.text_content()
-                    else:
-                        title = await item.inner_text(timeout=2000)
 
-                    if not title or not title.strip():
-                        logging.info(f"[{index}] Пустой заголовок, пропускаем")
+                        link_selector = config.get("link_selector") or title_selector
+                        link_el = item.locator(link_selector) if link_selector else item
+                        if link_el.count() == 0:
+                            logger.error(f"[{index}] Не найден элемент ссылки по селектору {link_selector}")
+                            continue
+
+                        link_attr = config.get("link_attr", "href")
+                        link = link_el.first.get_attribute(link_attr)
+
+                        if not link:
+                            logger.info(f"[{index}] Пустая ссылка, пропускаем")
+                            continue
+
+                        if link.startswith("/"):
+                            link = config["base_url"].rstrip("/") + link
+
+                        results.append({
+                            "title": title.strip(),
+                            "link": link.strip()
+                        })
+
+                    except Exception as e:
+                        logger.error(f"[{index}] Ошибка в элементе: {e}")
                         continue
 
-                    link_selector = config.get("link_selector") or title_selector
-                    link_el = item.locator(link_selector) if link_selector else item
-                    if await link_el.count() == 0:
-                        logging.error(f"[{index}] Не найден элемент ссылки по селектору {link_selector}")
-                        continue
-
-                    link_attr = config.get("link_attr", "href")
-                    link = await link_el.first.get_attribute(link_attr)
-
-                    if not link:
-                        logging.info(f"[{index}] Пустая ссылка, пропускаем")
-                        continue
-
-                    if link.startswith("/"):
-                        link = config["base_url"].rstrip("/") + link
-
-                    results.append({
-                        "title": title.strip(),
-                        "link": link.strip()
-                    })
-
-                except Exception as e:
-                    logging.error(f"[{index}] Ошибка в элементе: {e}")
-                    continue
+            except Exception as e:
+                logger.error(f"Ошибка во время загрузки страницы: {e}")
+            finally:
+                page.close()
+                browser.close()
 
     except Exception as e:
-        logging.error(f"Ошибка в Playwright: {e}")
-
-    finally:
-        if browser:
-            await browser.close()
+        logger.error(f"Ошибка в Playwright: {e}")
 
     return results
 
@@ -220,7 +224,7 @@ async def try_bs_then_playwright(url):
     
     config_set = config if isinstance(config, list) else [config]
 
-    logging.info(f"Пробуем BS4 для {url}")
+    logger.info(f"Пробуем BS4 для {url}")
     bs4_results = []
     for config in config_set:
         results = parse_with_bs4(url, config)
@@ -233,14 +237,7 @@ async def try_bs_then_playwright(url):
     print(f"Переключаемся на Playwright для {url}")
     playwright_results = []
     for config in config_set:
-        results = await parse_with_playwright(url, config)
+        results = parse_with_playwright(url, config)
         playwright_results.extend(results)
     
     return playwright_results
-
-
-logging.basicConfig(
-    filename="app.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)

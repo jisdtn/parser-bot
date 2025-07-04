@@ -1,7 +1,9 @@
-import logging
 from aiogram import Bot
 from typing import List, Dict
 import asyncpg
+from logger_config import get_logger
+
+logger = get_logger("save_article")
 
 
 async def save_new_articles_and_notify(pool: asyncpg.pool.Pool, articles: List[Dict], bot: Bot):
@@ -26,14 +28,7 @@ async def save_new_articles_and_notify(pool: asyncpg.pool.Pool, articles: List[D
                     try:
                         await bot.send_message(chat_id=record["chat_id"], text=msg)
                     except Exception as e:
-                        logging.error(f"Не удалось отправить сообщение {record['chat_id']}: {e}")
+                        logger.error(f"Не удалось отправить сообщение {record['chat_id']}: {e}")
 
             except Exception as e:
-                logging.error(f"Ошибка при обработке статьи {article}: {e}")
-
-
-logging.basicConfig(
-    filename="app.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+                logger.error(f"Ошибка при обработке статьи {article}: {e}")

@@ -1,0 +1,1 @@
+*/20 * * * * cd /app && /usr/local/bin/python main.py >> /app/app.log 2>&1
