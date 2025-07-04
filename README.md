@@ -1,6 +1,7 @@
  # Parser
 
  ### Проверить логи внутри контейнера: 
- 
- ```cat /app/app.log
+
+``` bash
+ cat /app/app.log
  ```
