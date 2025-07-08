@@ -1,8 +1,8 @@
 -- migrate:up
 create table articles (
     id serial primary key,
-    title varchar(200),
-    link varchar(200),
+    title varchar(400),
+    link varchar(400),
     CONSTRAINT unique_link UNIQUE (link)
 );
 

@@ -1,5 +1,7 @@
 import logging
 import os
+from logging.handlers import TimedRotatingFileHandler
+
 
 def get_logger(name: str = __name__) -> logging.Logger:
     logger = logging.getLogger(name)
@@ -8,7 +10,14 @@ def get_logger(name: str = __name__) -> logging.Logger:
         logger.setLevel(logging.INFO)
 
         log_path = os.getenv("LOG_FILE", "/app/app.log")
-        handler = logging.FileHandler(log_path, mode='a', encoding='utf-8')
+        handler = TimedRotatingFileHandler(
+            filename=log_path,
+            when='midnight',
+            interval=2,
+            backupCount=3,
+            encoding='utf-8',
+            utc=True
+        )
 
         formatter = logging.Formatter(
             "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -17,3 +26,4 @@ def get_logger(name: str = __name__) -> logging.Logger:
         logger.addHandler(handler)
 
     return logger
+

@@ -11,7 +11,7 @@ services:
       - pg_data:/var/lib/postgresql/data
     restart: always
     ports:
-      - 5432:5432
+      - 127.0.0.1:5432:5432
 
   bot:
     build:
@@ -20,8 +20,8 @@ services:
     depends_on:
         - db
     env_file: .env
-    ports:
-        - 8080:8080
+    # ports:
+    #     - 8080:8080
     restart: on-failure
 
   app:
@@ -33,6 +33,6 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=trust
     depends_on:
       - db
-    ports:
-      - 8000:8000
+    # ports:
+    #   - 8000:8000
     restart: on-failure

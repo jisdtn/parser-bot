@@ -2,3 +2,4 @@ aiogram
 python-dotenv
 asyncpg
 python-telegram-bot==20.3
+aiolimiter==1.2.1

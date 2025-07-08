@@ -19,7 +19,7 @@ load_dotenv()
 
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 
-DATABASE_URL = "postgresql://postgres:postgres@db:5432/postgres"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 async def get_pool() -> asyncpg.pool.Pool:
     return await asyncpg.create_pool(DATABASE_URL, min_size=5, max_size=20)
@@ -71,5 +71,3 @@ if __name__ == "__main__":
 
 
 # business of fashion и system_magazine - нужно разобраться и поключить их тоже
-
-# везде добавить дату парсинга статей (главный метод, рсс и хтмл)
