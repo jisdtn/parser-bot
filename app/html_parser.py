@@ -1,3 +1,4 @@
+import asyncio
 from urllib.parse import urlparse
 
 import requests
@@ -119,7 +120,7 @@ def parse_with_bs4(url, config):
                     continue
                 if link.startswith("/"):
                     link = config["base_url"].rstrip("/") + link
-                    
+
                 results.append({"title": title, "link": link})
 
             except Exception as e:
@@ -146,10 +147,6 @@ def parse_with_playwright(url, config):
 
                 page.evaluate("() => window.scrollBy(0, document.body.scrollHeight);")
                 page.wait_for_timeout(3000)
-
-                html = page.content()
-                with open("system_debug.html", "w", encoding="utf-8") as f:
-                    f.write(html)
 
                 item_selector = config.get("item_selector")
                 title_selector = config.get("title_selector")
@@ -221,7 +218,7 @@ async def try_bs_then_playwright(url):
     config = HTML_SITE_CONFIG.get(domain)
     if not config:
         raise ValueError(f"Нет настроек для домена: {domain}")
-    
+
     config_set = config if isinstance(config, list) else [config]
 
     logger.info(f"Пробуем BS4 для {url}")
@@ -229,15 +226,15 @@ async def try_bs_then_playwright(url):
     for config in config_set:
         results = parse_with_bs4(url, config)
         bs4_results.extend(results)
- 
+
 
     if len(bs4_results) >= 10 or domain in BS_ONLY_SITES:
         return bs4_results
 
-    print(f"Переключаемся на Playwright для {url}")
+    logger.info(f"Переключаемся на Playwright для {url}")
     playwright_results = []
     for config in config_set:
-        results = parse_with_playwright(url, config)
+        results = await asyncio.to_thread(parse_with_playwright, url, config)
         playwright_results.extend(results)
-    
+
     return playwright_results

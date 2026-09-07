@@ -1,5 +1,4 @@
 import os
-import sys
 import asyncio
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, Router
@@ -10,9 +9,6 @@ from typing import Optional
 from logger_config import get_logger
 
 logger = get_logger("bot")
-
-sys.path.append("/app")
-
 
 load_dotenv()
 
@@ -32,20 +28,19 @@ pool: Optional[asyncpg.pool.Pool] = None
 async def start_handler(message: Message):
     chat_id = message.chat.id
 
+    await message.answer("Привет! Когда появятся новые статьи, я их пришлю.")
+
     try:
         async with pool.acquire() as conn:
             await conn.execute("INSERT INTO users (chat_id) VALUES ($1) ON CONFLICT DO NOTHING", chat_id)
     except Exception as e:
         logger.error(f"Не удалось сохранить chat_id: {e}")
 
-    await message.answer("Привет! Когда появятся новые статьи, я их пришлю.")
-
 
 
 async def main():
     global pool
-    if pool is None:
-        pool = await get_pool()
+    pool = await get_pool()
     dp.include_router(router)
     await dp.start_polling(bot)
 

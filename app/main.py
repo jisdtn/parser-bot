@@ -29,14 +29,16 @@ pool: Optional[asyncpg.pool.Pool] = None
 
 async def parse_sources():
     logger.info("Парсим RSS источники:")
-    
+
     for url in rss_urls:
         logger.info(f"\n--- {url} ---")
         try:
-            for item in parse_rss(url):
-                await save_new_articles_and_notify(pool, [item], bot)
+            items = parse_rss(url)
+            for item in items:
                 logger.info(f"{item['title']} → {item['link']}")
-        
+
+            await save_new_articles_and_notify(pool, items, bot)
+
         except Exception as e:
             logger.error(f"Ошибка при парсинге RSS {url}: {e}")
 
@@ -68,6 +70,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-# business of fashion и system_magazine - нужно разобраться и поключить их тоже

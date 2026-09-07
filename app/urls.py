@@ -4,7 +4,7 @@ rss_urls = [
     'https://www.harpersbazaar.com/rss/all.xml?syndication=true',
     'https://wwd.com/feed',
     'https://feeds.feedburner.com/nymag/fashion',
-    'https://www.whowhatwear.com/feeds.xml ',
+    'https://www.whowhatwear.com/feeds.xml',
     'https://fashionista.com/.rss/excerpt/',
     'https://www.highsnobiety.com/feeds/rss',
     'https://www.dazeddigital.com/rss',
